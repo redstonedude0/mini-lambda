@@ -22,6 +22,8 @@ module IdentMap = Map.Make(String)
 type ty
   (* Basic integer type *)
   = TyInt
+  (* Basic boolean type *)
+  | TyBool
   (* Unit type for functions with no return *)
   | TyUnit
   (* Function type *)
@@ -47,6 +49,7 @@ type type_scope
 let rec occurs loc r ty
   = match ty with
     | TyInt -> ()
+    | TyBool -> ()
     | TyUnit -> ()
     | TyArr(params, ret) ->
       occurs loc r ret;
@@ -91,6 +94,7 @@ let new_ty_var () =
 let rec generalise ty
   = match ty with
   | TyInt -> ty
+  | TyBool -> ty
   | TyUnit -> ty
   | TyArr(params, ret) ->
     TyArr(Array.map generalise params, generalise ret)
@@ -106,6 +110,7 @@ let instantiate ty =
   let abs_context = Hashtbl.create 5 in
   let rec loop ty = match ty with
     | TyInt -> ty
+    | TyBool -> ty
     | TyUnit -> ty
     | TyArr(params, ret) ->
       TyArr(Array.map loop params, loop ret)
@@ -120,6 +125,34 @@ let instantiate ty =
     | TyVar _ ->
       failwith "should have been generalised"
   in loop ty
+
+(* Gets the id of the variable by name *)
+let rec get_id name scope fallback_id
+  = match scope with
+  | GlobalScope map :: _ when IdentMap.mem name map ->
+    (* Type schemes are instantiated here. *)
+    let id, _ = IdentMap.find name map in id
+  | GroupScope map :: _ when IdentMap.mem name map ->
+    (* Polymorphic recursion is not allowed, no generalisation here. *)
+    let id, _ = IdentMap.find name map in id
+  | FuncScope(map, _) :: _ when IdentMap.mem name map ->
+    let id, _ = IdentMap.find name map in id
+  | BindScope(name', _, _) :: _ when name = name' ->
+    fallback_id
+  | LambdaScope(map, captures) :: rest ->
+    (* In a lambda scope, see what needs to be captured. Arguments are *)
+    (* handled as expected, while captures are cached. If a captured name *)
+    (* is to be foud, the outside scope is searched, but an env reference *)
+    (* is returned in its place, unless the name is a global. *)
+    if IdentMap.mem name map then
+      let id, _ = IdentMap.find name map in id
+    else if IdentMap.mem name !captures then
+      let id, _, _ = IdentMap.find name !captures in id
+    else get_id name rest fallback_id
+  | _ :: rest ->
+    get_id name rest fallback_id
+  | [] ->
+    fallback_id
 
 (* Checks the type of an expression *)
 let rec check_expr scope expr
@@ -167,12 +200,52 @@ let rec check_expr scope expr
     in find_name scope
   | IntExpr(loc, i) ->
     Typed_ast.IntExpr(loc, i), TyInt
+  | BoolExpr(loc, i) ->
+    Typed_ast.BoolExpr(loc, i), TyBool
   | AddExpr(loc, lhs, rhs) ->
     let lhs', ty_lhs = check_expr scope lhs in
     unify loc ty_lhs TyInt;
     let rhs', ty_rhs = check_expr scope rhs in
     unify loc ty_rhs TyInt;
     Typed_ast.AddExpr(loc, lhs', rhs'), TyInt
+  | EqualsExpr(loc, lhs, rhs) ->
+    let lhs', ty_lhs = check_expr scope lhs in
+    let rhs', ty_rhs = check_expr scope rhs in
+    unify loc ty_lhs ty_rhs;
+    if (ty_lhs == TyInt || ty_lhs == TyBool) then
+      Typed_ast.EqualsExpr(loc, lhs', rhs'), TyInt
+    else
+      raise(Error(loc,"mismatched dual types"))
+  | NequalsExpr(loc, lhs, rhs) ->
+    let lhs', ty_lhs = check_expr scope lhs in
+    let rhs', ty_rhs = check_expr scope rhs in
+    unify loc ty_lhs ty_rhs;
+    if (ty_lhs == TyInt || ty_lhs == TyBool) then
+      Typed_ast.NequalsExpr(loc, lhs', rhs'), TyInt
+    else
+      raise(Error(loc,"mismatched dual types"))
+  | Or2Expr(loc, lhs, rhs) ->
+    let lhs', ty_lhs = check_expr scope lhs in
+    let rhs', ty_rhs = check_expr scope rhs in
+    unify loc ty_lhs ty_rhs;
+    if (ty_lhs == TyInt || ty_lhs == TyBool) then
+      Typed_ast.Or2Expr(loc, lhs', rhs'), TyInt
+    else
+      raise(Error(loc,"mismatched dual types"))
+  | And2Expr(loc, lhs, rhs) ->
+    let lhs', ty_lhs = check_expr scope lhs in
+    let rhs', ty_rhs = check_expr scope rhs in
+    unify loc ty_lhs ty_rhs;
+    if (ty_lhs == TyInt || ty_lhs == TyBool) then
+      Typed_ast.And2Expr(loc, lhs', rhs'), TyInt
+    else
+      raise(Error(loc,"mismatched dual types"))
+  | SubtractExpr(loc, lhs, rhs) ->
+    let lhs', ty_lhs = check_expr scope lhs in
+    unify loc ty_lhs TyInt;
+    let rhs', ty_rhs = check_expr scope rhs in
+    unify loc ty_rhs TyInt;
+    Typed_ast.SubtractExpr(loc, lhs', rhs'), TyInt
   | LambdaExpr(loc, params, body) ->
     let args, ty_args = List.fold_left
       (fun (map, ty_args) param ->
@@ -225,8 +298,9 @@ let check_statements ret_ty acc scope stats
       iter (nb, node :: acc) scope rest
     | BindStmt(loc, name, e) :: rest ->
       let e', ty = check_expr scope e in
-      let scope' = BindScope(name, nb, ty) :: scope in
-      let node = Typed_ast.BindStmt(loc, nb, e') in
+      let x = (get_id name scope nb) in
+      let scope' = BindScope(name, x, ty) :: scope in
+      let node = Typed_ast.BindStmt(loc, x, e') in
       iter (nb + 1, node :: acc) scope' rest
     | [] ->
       (nb, acc)
@@ -239,7 +313,19 @@ let rec find_refs_expr bound acc expr
     if List.mem name bound then acc else (loc, name) :: acc
   | IntExpr(_, _) ->
     acc
+  | BoolExpr(_, _) ->
+    acc
   | AddExpr(_, lhs, rhs) ->
+    find_refs_expr bound (find_refs_expr bound acc rhs) lhs
+  | EqualsExpr(_, lhs, rhs) ->
+    find_refs_expr bound (find_refs_expr bound acc rhs) lhs
+  | NequalsExpr(_, lhs, rhs) ->
+    find_refs_expr bound (find_refs_expr bound acc rhs) lhs
+  | Or2Expr(_, lhs, rhs) ->
+    find_refs_expr bound (find_refs_expr bound acc rhs) lhs
+  | And2Expr(_, lhs, rhs) ->
+    find_refs_expr bound (find_refs_expr bound acc rhs) lhs
+  | SubtractExpr(_, lhs, rhs) ->
     find_refs_expr bound (find_refs_expr bound acc rhs) lhs
   | LambdaExpr(_, params, body) ->
     find_refs_expr (List.append params bound) acc body

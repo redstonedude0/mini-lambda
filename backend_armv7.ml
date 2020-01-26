@@ -47,6 +47,10 @@ let compile_closure out { id; num_params; num_locals; name; insts; _ } =
     | ConstInt i ->
       Printf.fprintf out "\tldr r1, =%d\n" i;
       Printf.fprintf out "\tpush {r1}\n"
+    | ConstBool i ->
+      let x = (if i then 1 else 0) in
+      Printf.fprintf out "\tldr r1, =%d\n" x;
+      Printf.fprintf out "\tpush {r1}\n"
     | Closure(i, num_capture) ->
       let size = num_capture * 4 + 4 in
       Printf.fprintf out "\tmov r1, #%d\n" num_capture;
@@ -63,6 +67,18 @@ let compile_closure out { id; num_params; num_locals; name; insts; _ } =
       Printf.fprintf out "\tpop {r2}\n";
       Printf.fprintf out "\tadd r1, r1, r2\n";
       Printf.fprintf out "\tpush {r1}\n";
+    | Subtract ->
+      Printf.fprintf out "\tpop {r1}\n";
+      Printf.fprintf out "\tpop {r2}\n";
+      Printf.fprintf out "\tadd r1, r1, r2\n";
+      Printf.fprintf out "\tpush {r1}\n";
+    | Equals -> ()
+
+    | Nequals -> ()
+
+    | Or2 -> ()
+
+    | And2 -> ()
     | Call ->
       Printf.fprintf out "\tpop {r0}\n";
       Printf.fprintf out "\tldr r1, [r0]\n";

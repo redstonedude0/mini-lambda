@@ -27,10 +27,22 @@ type inst
   | SetLocal of int
   (* Pops a constant onto the stack. *)
   | ConstInt of int
+  (* Pops a bool onto the stack *)
+  | ConstBool of bool
   (* Pops a number of values and pushes a closure capturing them. *)
   | Closure of int * int
   (* Pops two values and pushes their sum. *)
   | Add
+  (* Pops two values and pushes their subtraction*)
+  | Subtract
+  (* Compares heads *)
+  | Equals
+  (* Compares heads *)
+  | Nequals
+  (* Bitwise or *)
+  | Or2
+  (* Bitwise and *)
+  | And2
   (* Pops a closure and invokes it. *)
   | Call
   (* Pops a return value and returns. *)
@@ -58,8 +70,14 @@ let print_inst out inst =
   | GetLocal i    -> Printf.fprintf out "\tGetLocal(%d)\n" i
   | SetLocal i    -> Printf.fprintf out "\tSetLocal(%d)\n" i
   | ConstInt i    -> Printf.fprintf out "\tConstInt(%d)\n" i
+  | ConstBool i   -> Printf.fprintf out "\tConstBool(%b)\n" i
   | Closure(i, n) -> Printf.fprintf out "\tClosure(%d, %d)\n" i n
   | Add           -> Printf.fprintf out "\tAdd\n"
+  | Subtract      -> Printf.fprintf out "\tSubtract\n"
+  | Equals        -> Printf.fprintf out "\tEquals\n"
+  | Nequals       -> Printf.fprintf out "\tNequals\n"
+  | Or2           -> Printf.fprintf out "\tOr2\n"
+  | And2          -> Printf.fprintf out "\tAnd2\n"
   | Call          -> Printf.fprintf out "\tInvoke\n"
   | Return        -> Printf.fprintf out "\tReturn\n"
   | Pop           -> Printf.fprintf out "\tPop\n"

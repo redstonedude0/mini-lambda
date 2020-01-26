@@ -16,7 +16,13 @@ type expr
   | BoundExpr of loc * id
   | ArgExpr of loc * id
   | IntExpr of loc * int
+  | BoolExpr of loc * bool
   | AddExpr of loc * expr * expr
+  | EqualsExpr of loc * expr * expr
+  | NequalsExpr of loc * expr * expr
+  | Or2Expr of loc * expr * expr
+  | And2Expr of loc * expr * expr
+  | SubtractExpr of loc * expr * expr
   | LambdaExpr of loc * int * expr array * expr
   | CallExpr of loc * expr * expr array
 

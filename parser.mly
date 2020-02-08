@@ -18,6 +18,10 @@ open Ast
 %token AND2
 %token MINUS
 %token LPAREN RPAREN LBRACE RBRACE
+%token IF
+%token THEN
+%token ELSE
+%token FI
 %token FUNC
 %token RETURN
 %token ARROW
@@ -41,6 +45,10 @@ func:
     LPAREN params = separated_list(COMMA, IDENT); RPAREN
     body = func_body
     { { name; params; body; loc = $startpos } }
+
+ifstmt:
+  | IF body1=func_body; THEN body2=func_body; ELSE body3=func_body; FI { IfStmt($startpos, body1, body2, Some(body3)) }
+  | IF body1=func_body; THEN body2=func_body; FI { IfStmt($startpos, body1, body2, None) }
 
 func_body:
   | LBRACE body = statements; RBRACE { Some(body) }

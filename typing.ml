@@ -18,6 +18,7 @@ exception Error of Ast.loc * string
 
 module IdentMap = Map.Make(String)
 
+
 (* Enumeration of types *)
 type ty
   (* Basic integer type *)
@@ -302,6 +303,26 @@ let check_statements ret_ty acc scope stats
       let scope' = BindScope(name, x, ty) :: scope in
       let node = Typed_ast.BindStmt(loc, x, e') in
       iter (nb + 1, node :: acc) scope' rest
+    | IfStmt(loc, e1, e2, Some(e3)) :: rest ->
+      let e1', ty1 = check_expr scope e1 in
+      let e2', ty2 = check_expr scope e2 in
+      let e3', ty3 = check_expr scope e3 in
+      unify loc ty1 TyBool;
+      unify loc ty2 TyUnit;
+      unify loc ty3 TyUnit;
+      (**** find id - TODO - how do do this nandor? - need to generate a unique ID for this if statement**********)
+      let id = ??? in
+      let node = Typed_ast.IfStmt(loc,id,e1,e2,Some(e3)) in
+      iter (nb, node::acc) scope rest
+    | IfStmt(loc, e1, e2, None) :: rest ->
+      let e1', ty1 = check_expr scope e1 in
+      let e2', ty2 = check_expr scope e2 in
+      unify loc ty1 TyBool;
+      unify loc ty2 TyUnit;
+      (**** find id - TODO - how do do this nandor? - need to generate a unique ID for this if statement**********)
+      let id = ??? in
+      let node = Typed_ast.IfStmt(loc,id,e1,e2,None) in
+      iter (nb, node::acc) scope rest
     | [] ->
       (nb, acc)
   in iter acc scope stats

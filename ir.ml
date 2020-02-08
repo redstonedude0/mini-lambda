@@ -81,6 +81,9 @@ let print_inst out inst =
   | Call          -> Printf.fprintf out "\tInvoke\n"
   | Return        -> Printf.fprintf out "\tReturn\n"
   | Pop           -> Printf.fprintf out "\tPop\n"
+  | Then i        -> Printf.fprintf out "\tThen(%d)\n" i
+  | Else i        -> Printf.fprintf out "\tElse(%d)\n" i
+  | Fi i          -> Printf.fprintf out "\tFi(%d)\n" i
 
 let print_closure out {id; name; num_params; num_captures; num_locals; insts} =
   Printf.fprintf out "%s#%d(%d, %d, %d):\n"

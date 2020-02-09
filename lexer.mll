@@ -26,9 +26,7 @@ rule token = parse
   | "\\" { LAMBDA }
   | "->" { ARROW }
   | "if" { IF }
-  | "then" { THEN }
   | "else" { ELSE }
-  | "fi" { FI }
   | "func" { FUNC }
   | "return" { RETURN }
   | "<-" { BIND }

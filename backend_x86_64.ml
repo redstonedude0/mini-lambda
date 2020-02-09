@@ -103,8 +103,8 @@ let compile_closure out { id; num_params; num_locals; name; insts; _ } =
     | Jump i ->
       Printf.fprintf out "\tjmp label_%d\n" i;
     | JumpZ i ->
-      Printf.fprintf out "\tpopq %%rcx\n";
-      Printf.fprintf out "\ttstq %%rdx, %%rdx\n";
+      Printf.fprintf out "\tpopq %%rdx\n";
+      Printf.fprintf out "\ttestq %%rdx, %%rdx\n";
       Printf.fprintf out "\tjz label_%d\n" i;
     ) insts;
 

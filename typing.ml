@@ -222,34 +222,34 @@ let rec check_expr scope expr
     let lhs', ty_lhs = check_expr scope lhs in
     let rhs', ty_rhs = check_expr scope rhs in
     unify loc ty_lhs ty_rhs;
-    if (ty_lhs == TyInt || ty_lhs == TyBool) then
+    if (ty_lhs == TyInt || ty_lhs == TyBool || ty_rhs == TyInt || ty_rhs == TyBool) then
       Typed_ast.EqualsExpr(loc, lhs', rhs'), TyBool
     else
-      raise(Error(loc,"mismatched dual types"))
+      raise(Error(loc,"mismatched dual types eq "^type_to_string ty_lhs ^ " and " ^ type_to_string ty_rhs))
   | NequalsExpr(loc, lhs, rhs) ->
     let lhs', ty_lhs = check_expr scope lhs in
     let rhs', ty_rhs = check_expr scope rhs in
     unify loc ty_lhs ty_rhs;
-    if (ty_lhs == TyInt || ty_lhs == TyBool) then
+    if (ty_lhs == TyInt || ty_lhs == TyBool || ty_rhs == TyInt || ty_rhs == TyBool) then
       Typed_ast.NequalsExpr(loc, lhs', rhs'), TyBool
     else
-      raise(Error(loc,"mismatched dual types"))
+      raise(Error(loc,"mismatched dual types neq "^type_to_string ty_lhs ^ " and " ^ type_to_string ty_rhs))
   | Or2Expr(loc, lhs, rhs) ->
     let lhs', ty_lhs = check_expr scope lhs in
     let rhs', ty_rhs = check_expr scope rhs in
     unify loc ty_lhs ty_rhs;
-    if (ty_lhs == TyInt || ty_lhs == TyBool) then
+    if (ty_lhs == TyInt || ty_lhs == TyBool || ty_rhs == TyInt || ty_rhs == TyBool) then
       Typed_ast.Or2Expr(loc, lhs', rhs'), TyInt
     else
-      raise(Error(loc,"mismatched dual types"))
+      raise(Error(loc,"mismatched dual types or "^type_to_string ty_lhs ^ " and " ^ type_to_string ty_rhs))
   | And2Expr(loc, lhs, rhs) ->
     let lhs', ty_lhs = check_expr scope lhs in
     let rhs', ty_rhs = check_expr scope rhs in
     unify loc ty_lhs ty_rhs;
-    if (ty_lhs == TyInt || ty_lhs == TyBool) then
+    if (ty_lhs == TyInt || ty_lhs == TyBool || ty_rhs == TyInt || ty_rhs == TyBool) then
       Typed_ast.And2Expr(loc, lhs', rhs'), TyInt
     else
-      raise(Error(loc,"mismatched dual types"))
+      raise(Error(loc,"mismatched dual types and "^type_to_string ty_lhs ^ " and " ^ type_to_string ty_rhs))
   | SubtractExpr(loc, lhs, rhs) ->
     let lhs', ty_lhs = check_expr scope lhs in
     unify loc ty_lhs TyInt;

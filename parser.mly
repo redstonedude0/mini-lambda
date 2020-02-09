@@ -46,13 +46,12 @@ func:
     body = func_body
     { { name; params; body; loc = $startpos } }
 
-ifstmt:
-  | IF body1=func_body; THEN body2=func_body; ELSE body3=func_body; FI { IfStmt($startpos, body1, body2, Some(body3)) }
-  | IF body1=func_body; THEN body2=func_body; FI { IfStmt($startpos, body1, body2, None) }
-
 func_body:
   | LBRACE body = statements; RBRACE { Some(body) }
   | SEMI { None }
+
+block:
+  | LBRACE body = statements; RBRACE { body }
 
 statements:
   | statement statements { $1 :: $2 }
@@ -62,6 +61,8 @@ statement:
   | RETURN expr SEMI { ReturnStmt($startpos, $2) }
   | IDENT BIND expr SEMI { BindStmt($startpos, $1, $3) }
   | expr SEMI { ExprStmt($startpos, $1) }
+  | IF body1=block; THEN body2=block; ELSE body3=block; FI { IfStmt($startpos, body1, body2, Some(body3)) }
+  | IF body1=block; THEN body2=block; FI { IfStmt($startpos, body1, body2, None) }
 
 expr:
   | unary_expr { $1 }

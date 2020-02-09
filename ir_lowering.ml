@@ -83,10 +83,12 @@ let lower program =
           lower_body (Ir.Pop :: lower_expr acc e) rest
         | BindStmt(_, id, e) :: rest ->
           lower_body (Ir.SetLocal id :: lower_expr acc e) rest
+        | AssignStmt(_, id, e) :: rest ->
+          lower_body (Ir.SetLocal id :: lower_expr acc e) rest
         | IfStmt(_, id, e1, e2, Some(e3)) :: rest ->
-          lower_body (lower_expr acc e1 :: Ir.Then id :: lower_expr acc e2 :: Ir.Else id :: lower_expr acc e2 :: Ir.Fi id) rest
+          lower_body (lower_body acc e1 @ [Ir.Then id] @ lower_body acc e2 @ [Ir.Else id] @ lower_body acc e3 @ [Ir.Fi id]) rest
         | IfStmt(_, id, e1, e2, None) :: rest ->
-          lower_body (lower_expr acc e1 :: Ir.Then id :: lower_expr acc e2 :: Ir.Else id :: Ir.Fi id) rest
+          lower_body (lower_body acc e1 @ [Ir.Then id] @ lower_body acc e2 @ Ir.Else id :: Ir.Fi id :: []) rest
         | [] ->
           acc
       in

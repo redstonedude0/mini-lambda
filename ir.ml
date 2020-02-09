@@ -49,6 +49,12 @@ type inst
   | Return
   (* Discards the value from the top of the stack. *)
   | Pop
+  (* For IF statements *)
+  | Then of int
+  (* For IF statements *)
+  | Else of int
+  (* For IF statements *)
+  | Fi of int
 
 type closure =
   { id: int

@@ -79,6 +79,9 @@ let compile_closure out { id; num_params; num_locals; name; insts; _ } =
     | Or2 -> ()
 
     | And2 -> ()
+    | Then _ -> ()
+    | Else _ -> ()
+    | Fi _ -> ()
     | Call ->
       Printf.fprintf out "\tpop {r0}\n";
       Printf.fprintf out "\tldr r1, [r0]\n";

@@ -138,8 +138,8 @@ let rec get_id name scope fallback_id
     let id, _ = IdentMap.find name map in id
   | FuncScope(map, _) :: _ when IdentMap.mem name map ->
     let id, _ = IdentMap.find name map in id
-  | BindScope(name', _, _) :: _ when name = name' ->
-    fallback_id
+  | BindScope(name', bound_id, _) :: _ when name = name' ->
+    bound_id
   | LambdaScope(map, captures) :: rest ->
     (* In a lambda scope, see what needs to be captured. Arguments are *)
     (* handled as expected, while captures are cached. If a captured name *)
@@ -284,7 +284,7 @@ let rec check_expr scope expr
     Typed_ast.CallExpr(loc, callee', Array.of_list (List.map fst args')), ret_ty
 
 (* Checks the type of a statement. *)
-let check_statements ret_ty acc scope stats
+let rec check_statements ret_ty acc scope stats
   = let rec iter (nb, acc) scope stats = match stats with
     | ReturnStmt(loc, e) :: rest ->
       let e', ty = check_expr scope e in
@@ -300,29 +300,27 @@ let check_statements ret_ty acc scope stats
     | BindStmt(loc, name, e) :: rest ->
       let e', ty = check_expr scope e in
       let x = (get_id name scope nb) in
-      let scope' = BindScope(name, x, ty) :: scope in
-      let node = Typed_ast.BindStmt(loc, x, e') in
-      iter (nb + 1, node :: acc) scope' rest
+      if (x == nb) then begin
+        let scope' = BindScope(name, x, ty) :: scope in
+        let node = Typed_ast.BindStmt(loc, x, e') in
+        iter (nb + 1, node :: acc) scope' rest
+      end else begin
+        let node = Typed_ast.AssignStmt(loc, x, e') in
+        iter (nb, node::acc) scope rest
+      end
     | IfStmt(loc, e1, e2, Some(e3)) :: rest ->
-      let e1', ty1 = check_expr scope e1 in
-      let e2', ty2 = check_expr scope e2 in
-      let e3', ty3 = check_expr scope e3 in
-      unify loc ty1 TyBool;
-      unify loc ty2 TyUnit;
-      unify loc ty3 TyUnit;
-      (**** find id - TODO - how do do this nandor? - need to generate a unique ID for this if statement**********)
-      let id = ??? in
-      let node = Typed_ast.IfStmt(loc,id,e1,e2,Some(e3)) in
-      iter (nb, node::acc) scope rest
+      let nb1, body1 = check_statements ret_ty (0, []) scope e1 in
+      let nb2, body2 = check_statements ret_ty (0, []) scope e2 in
+      let nb3, body3 = check_statements ret_ty (0, []) scope e3 in
+      let id = nb+nb1+nb2+nb3 in
+      let node = Typed_ast.IfStmt(loc,id,body1,body2,Some(body3)) in
+      iter (nb+nb1+nb2+nb3+1, node::acc) scope rest
     | IfStmt(loc, e1, e2, None) :: rest ->
-      let e1', ty1 = check_expr scope e1 in
-      let e2', ty2 = check_expr scope e2 in
-      unify loc ty1 TyBool;
-      unify loc ty2 TyUnit;
-      (**** find id - TODO - how do do this nandor? - need to generate a unique ID for this if statement**********)
-      let id = ??? in
-      let node = Typed_ast.IfStmt(loc,id,e1,e2,None) in
-      iter (nb, node::acc) scope rest
+      let nb1, body1 = check_statements ret_ty (0, []) scope e1 in
+      let nb2, body2 = check_statements ret_ty (0, []) scope e2 in
+      let id = nb+nb1+nb2 in
+      let node = Typed_ast.IfStmt(loc,id,body1,body2,None) in
+      iter (nb+nb1+nb2+1, node::acc) scope rest
     | [] ->
       (nb, acc)
   in iter acc scope stats
@@ -354,7 +352,7 @@ let rec find_refs_expr bound acc expr
     List.fold_left (find_refs_expr bound) (find_refs_expr bound acc callee) args
 
 (* Finds the free variables in a function body. *)
-let find_refs_stat bound stats
+let rec find_refs_stat bound stats
   = let _, acc = List.fold_left
       (fun (bound, acc) stat ->
         match stat with
@@ -365,6 +363,15 @@ let find_refs_stat bound stats
         | BindStmt(_, name, e) ->
           (* The expression can refer to previous instances of 'name'. *)
           (name :: bound, find_refs_expr bound acc e)
+        | IfStmt(_, e1, e2, Some(e3)) ->
+          let acc1 = find_refs_stat bound e1 in
+          let acc2 = find_refs_stat bound e2 in
+          let acc3 = find_refs_stat bound e3 in
+          (bound, acc1 @ acc2 @ acc3)
+        | IfStmt(_, e1, e2, None) ->
+          let acc1 = find_refs_stat bound e1 in
+          let acc2 = find_refs_stat bound e2 in
+          (bound, acc1 @ acc2)
       ) (bound, []) stats
     in acc
 

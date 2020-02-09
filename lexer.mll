@@ -27,6 +27,11 @@ rule token = parse
   | "->" { ARROW }
   | "if" { IF }
   | "else" { ELSE }
+  | "while" { WHILE }
+  | "for" { FOR }
+  | "break" { BREAK }
+  | "continue" { CONTINUE }
+  | ":" { COLON }
   | "func" { FUNC }
   | "return" { RETURN }
   | "<-" { BIND }

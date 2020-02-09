@@ -26,6 +26,9 @@ type statement
   | ExprStmt of loc * expr
   | BindStmt of loc * string * expr
   | IfStmt of loc * expr * (statement list) * ((statement list) option)
+  | WhileStmt of loc * expr * (statement list) * (string option)
+  | BreakStmt of loc * (string option)
+  | ContinueStmt of loc * (string option)
 
 type func =
   { name: string

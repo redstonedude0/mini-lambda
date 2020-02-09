@@ -32,6 +32,9 @@ type statement
   | BindStmt of loc * id * expr
   | AssignStmt of loc * id * expr
   | IfStmt of loc * id * expr * (statement list) * ((statement list) option)
+  | WhileStmt of loc * expr * (statement list) * id
+  | BreakStmt of loc * id
+  | ContinueStmt of loc * id
 
 type func =
   { id: id

@@ -20,7 +20,12 @@ open Ast
 %token LPAREN RPAREN LBRACE RBRACE
 %token IF
 %token ELSE
+%token WHILE
+%token BREAK
+%token CONTINUE
+%token COLON
 %token FUNC
+%token FOR
 %token RETURN
 %token ARROW
 %token LAMBDA
@@ -53,7 +58,11 @@ block:
 
 statements:
   | statement statements { $1 :: $2 }
+  | multistatement statements { $1 @ $2 }
   | { [] }
+
+multistatement:
+  | FOR LPAREN s_init=statement; e_test=expr SEMI s_incr=statement RPAREN body=block { s_init :: [WhileStmt($startpos,e_test,body @ [s_incr],None)] }
 
 statement:
   | RETURN expr SEMI { ReturnStmt($startpos, $2) }
@@ -62,6 +71,12 @@ statement:
 /* For now not using optional() menhir construct because it (should) produce the same AST either way */
   | IF body1=expr body2=block ELSE body3=block { IfStmt($startpos, body1, body2, Some(body3)) }
   | IF body1=expr body2=block { IfStmt($startpos, body1, body2, None) }
+  | WHILE body1=expr body2=block { WhileStmt($startpos, body1, body2, None) }
+  | label=IDENT COLON WHILE body1=expr body2=block { WhileStmt($startpos, body1, body2, Some(label)) }
+  | BREAK SEMI { BreakStmt($startpos, None) }
+  | BREAK label=IDENT SEMI { BreakStmt($startpos, Some(label)) }
+  | CONTINUE SEMI { ContinueStmt($startpos, None) }
+  | CONTINUE label=IDENT SEMI { ContinueStmt($startpos, Some(label)) }
 
 expr:
   | unary_expr { $1 }

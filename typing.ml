@@ -50,9 +50,11 @@ let type_to_string ty
 type lambda_capture = int * Typed_ast.expr * ty
 type type_scope
   = GlobalScope of (int * ty) IdentMap.t
+  | LabellingScope of int
   | GroupScope of (int * ty) IdentMap.t
   | FuncScope of (int * ty) IdentMap.t * ty
   | BindScope of string * int * ty
+  | WhileScope of (string option) * int
   | LambdaScope of (int * ty) IdentMap.t * (lambda_capture IdentMap.t) ref
 
 (* Occurs check *)
@@ -163,6 +165,31 @@ let rec get_id name scope fallback_id
     get_id name rest fallback_id
   | [] ->
     fallback_id
+
+let label_rf = ref 0
+(* Gets the next unique labelling id *)
+let next_label_id _(*ignored scope arg to prevent optimisation*)
+  = let label = !label_rf in
+  label_rf := label + 1;
+  (label)
+
+(* Gets the id of the while loop by optional name*)
+let rec get_while_id o_name scope
+  = match scope with
+  | WhileScope(Some(name), bound_id) :: rest -> begin
+    match o_name with
+      | Some(o_n) when o_n = name -> bound_id
+      | _ -> get_while_id o_name rest
+    end
+  | WhileScope(None, bound_id) :: rest -> begin
+    match o_name with
+      | Some(_) -> get_while_id o_name rest
+      | None -> bound_id
+    end
+  | _ :: rest ->
+    get_while_id o_name rest
+  | [] ->
+    failwith "couldn't find while loop"
 
 (* Checks the type of an expression *)
 let rec check_expr scope expr
@@ -322,16 +349,32 @@ let rec check_statements ret_ty acc scope stats
       unify loc ty TyBool;
       let nb2, body2 = check_statements ret_ty (0, []) scope e2 in
       let nb3, body3 = check_statements ret_ty (0, []) scope e3 in
-      let id = nb+nb2+nb3 in
+      let id = next_label_id scope in
       let node = Typed_ast.IfStmt(loc,id,body1,body2,Some(body3)) in
-      iter (nb+nb2+nb3+1, node::acc) scope rest
+      iter (nb+nb2+nb3, node::acc) scope rest
     | IfStmt(loc, e1, e2, None) :: rest ->
       let body1, ty = check_expr scope e1 in
       unify loc ty TyBool;
       let nb2, body2 = check_statements ret_ty (0, []) scope e2 in
-      let id = nb+nb2 in
+      let id = next_label_id scope in
       let node = Typed_ast.IfStmt(loc,id,body1,body2,None) in
+      iter (nb+nb2, node::acc) scope rest
+    | WhileStmt(loc, e1, e2, name) :: rest ->
+      let body1, ty = check_expr scope e1 in
+      unify loc ty TyBool;
+      let id = next_label_id scope in
+      let scope'' = WhileScope(name, id) :: scope in
+      let nb2, body2 = check_statements ret_ty (0, []) scope'' e2 in
+      let node = Typed_ast.WhileStmt(loc,body1,body2,id) in
       iter (nb+nb2+1, node::acc) scope rest
+    | BreakStmt(loc,name) :: rest ->
+      let id = get_while_id name scope in
+      let node = Typed_ast.BreakStmt(loc,id) in
+      iter (nb, node::acc) scope rest
+    | ContinueStmt(loc,name) :: rest ->
+      let id = get_while_id name scope in
+      let node = Typed_ast.ContinueStmt(loc,id) in
+      iter (nb, node::acc) scope rest
     | [] ->
       (nb, acc)
   in iter acc scope stats
@@ -383,6 +426,12 @@ let rec find_refs_stat bound stats
           let acc1 = find_refs_expr bound acc e1 in
           let acc2 = find_refs_stat bound e2 in
           (bound, acc1 @ acc2)
+        | WhileStmt(_, e1, e2, _) ->
+          let acc1 = find_refs_expr bound acc e1 in
+          let acc2 = find_refs_stat bound e2 in
+          (bound, acc1 @ acc2)
+        | BreakStmt(_, _) -> (bound,acc)
+        | ContinueStmt(_, _) -> (bound,acc)
       ) (bound, []) stats
     in acc
 
@@ -490,7 +539,7 @@ let check prog =
           IdentMap.add name (id, new_ty_var ()) scope
         ) IdentMap.empty group
       in
-      let group_scope = GroupScope group_map :: [GlobalScope root_scope]
+      let group_scope = GroupScope group_map :: GlobalScope root_scope :: [LabellingScope 0]
       in
       (* Typecheck individual methods *)
       let types = Array.map

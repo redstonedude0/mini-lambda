@@ -89,6 +89,12 @@ let lower program =
           lower_body ([Ir.Label (id*2+1)] @ lower_body [] e3 @ [Ir.Label (id*2)] @ [Ir.Jump (id*2+1)] @ (lower_body [] e2) @ [Ir.JumpZ (id*2)] @ lower_expr acc e1) rest
         | IfStmt(_, id, e1, e2, None) :: rest ->
           lower_body ([Ir.Label (id*2)] @ lower_body [] e2 @ [Ir.JumpZ (id*2)] @ lower_expr acc e1) rest
+        | WhileStmt(_, e1, e2, id) :: rest ->
+          lower_body ( [Ir.Label (id*2+1)] @ [Ir.Jump (id*2)] @ lower_body [] (List.rev e2) @  [Ir.JumpZ (id*2+1)] @ lower_expr [] e1 @ [Ir.Label (id*2)] @ acc) rest
+        | BreakStmt(_, id) :: rest ->
+          lower_body ((Ir.Jump (id*2+1))::acc) rest
+        | ContinueStmt(_, id) :: rest ->
+          lower_body ((Ir.Jump (id*2))::acc) rest
         | [] ->
           acc
       in

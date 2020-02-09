@@ -62,12 +62,15 @@ statements:
   | { [] }
 
 multistatement:
-  | FOR LPAREN s_init=statement; e_test=expr SEMI s_incr=statement RPAREN body=block { s_init :: [WhileStmt($startpos,e_test,body @ [s_incr],None)] }
+  | FOR LPAREN s_init=short_statement SEMI e_test=expr SEMI s_incr=short_statement RPAREN body=block { s_init :: [WhileStmt($startpos,e_test,body @ [s_incr],None)] }
+
+short_statement:
+  | RETURN expr { ReturnStmt($startpos, $2) }
+  | IDENT BIND expr { BindStmt($startpos, $1, $3) }
+  | expr { ExprStmt($startpos, $1) }
 
 statement:
-  | RETURN expr SEMI { ReturnStmt($startpos, $2) }
-  | IDENT BIND expr SEMI { BindStmt($startpos, $1, $3) }
-  | expr SEMI { ExprStmt($startpos, $1) }
+  | short_statement SEMI { $1 }
 /* For now not using optional() menhir construct because it (should) produce the same AST either way */
   | IF body1=expr body2=block ELSE body3=block { IfStmt($startpos, body1, body2, Some(body3)) }
   | IF body1=expr body2=block { IfStmt($startpos, body1, body2, None) }

@@ -72,16 +72,20 @@ let compile_closure out { id; num_params; num_locals; name; insts; _ } =
       Printf.fprintf out "\tpop {r2}\n";
       Printf.fprintf out "\tadd r1, r1, r2\n";
       Printf.fprintf out "\tpush {r1}\n";
-    | Equals -> ()
-
-    | Nequals -> ()
-
-    | Or2 -> ()
-
-    | And2 -> ()
-    | Then _ -> ()
-    | Else _ -> ()
-    | Fi _ -> ()
+    | Equals ->
+      failwith "unimplemented";
+    | Nequals -> 
+      failwith "unimplemented";
+    | Or2 -> 
+      failwith "unimplemented";
+    | And2 -> 
+      failwith "unimplemented";
+    | Label _ -> 
+      failwith "unimplemented";
+    | Jump _ -> 
+      failwith "unimplemented";
+    | JumpZ _ -> 
+      failwith "unimplemented";
     | Call ->
       Printf.fprintf out "\tpop {r0}\n";
       Printf.fprintf out "\tldr r1, [r0]\n";

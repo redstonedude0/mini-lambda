@@ -25,7 +25,7 @@ type statement
   = ReturnStmt of loc * expr
   | ExprStmt of loc * expr
   | BindStmt of loc * string * expr
-  | IfStmt of loc * (statement list) * (statement list) * ((statement list) option)
+  | IfStmt of loc * expr * (statement list) * ((statement list) option)
 
 type func =
   { name: string

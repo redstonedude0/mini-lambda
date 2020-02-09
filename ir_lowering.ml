@@ -86,9 +86,9 @@ let lower program =
         | AssignStmt(_, id, e) :: rest ->
           lower_body (Ir.SetLocal id :: lower_expr acc e) rest
         | IfStmt(_, id, e1, e2, Some(e3)) :: rest ->
-          lower_body (lower_body acc e1 @ [Ir.Then id] @ lower_body acc e2 @ [Ir.Else id] @ lower_body acc e3 @ [Ir.Fi id]) rest
+          lower_body ([Ir.Label (id*2+1)] @ lower_body acc e3 @ [Ir.Label (id*2)] @ [Ir.Jump (id*2+1)] @ (lower_body acc e2) @ [Ir.JumpZ (id*2)] @ lower_expr acc e1) rest
         | IfStmt(_, id, e1, e2, None) :: rest ->
-          lower_body (lower_body acc e1 @ [Ir.Then id] @ lower_body acc e2 @ Ir.Else id :: Ir.Fi id :: []) rest
+          lower_body ([Ir.Label (id*2)] @ lower_body acc e2 @ [Ir.JumpZ (id*2)] @ lower_expr acc e1) rest
         | [] ->
           acc
       in

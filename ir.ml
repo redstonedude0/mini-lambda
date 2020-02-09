@@ -50,11 +50,11 @@ type inst
   (* Discards the value from the top of the stack. *)
   | Pop
   (* For IF statements *)
-  | Then of int
-  (* For IF statements *)
-  | Else of int
-  (* For IF statements *)
-  | Fi of int
+  | Label of int
+  (* For IF statements - unconditional jmp*)
+  | Jump of int
+  (* For IF statements - jmp if zero*)
+  | JumpZ of int
 
 type closure =
   { id: int
@@ -87,9 +87,9 @@ let print_inst out inst =
   | Call          -> Printf.fprintf out "\tInvoke\n"
   | Return        -> Printf.fprintf out "\tReturn\n"
   | Pop           -> Printf.fprintf out "\tPop\n"
-  | Then i        -> Printf.fprintf out "\tThen(%d)\n" i
-  | Else i        -> Printf.fprintf out "\tElse(%d)\n" i
-  | Fi i          -> Printf.fprintf out "\tFi(%d)\n" i
+  | Label i        -> Printf.fprintf out "\tLabel(%d)\n" i
+  | Jump i        -> Printf.fprintf out "\tJump(%d)\n" i
+  | JumpZ i          -> Printf.fprintf out "\tJumpZ(%d)\n" i
 
 let print_closure out {id; name; num_params; num_captures; num_locals; insts} =
   Printf.fprintf out "%s#%d(%d, %d, %d):\n"

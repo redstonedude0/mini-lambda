@@ -37,6 +37,15 @@ type ty
   = Unbound of int
   | Bound of ty
 
+let type_to_string ty
+  = match ty with
+    | TyInt -> "int"
+    | TyBool -> "bool"
+    | TyUnit -> "unit"
+    | TyArr _ -> "array"
+    | TyAbs _ -> "abs"
+    | TyVar _ -> "var"
+
 (* Scope to find types in. *)
 type lambda_capture = int * Typed_ast.expr * ty
 type type_scope
@@ -82,7 +91,7 @@ let rec unify loc a b
       done;
       unify loc ra rb
     | _, _ ->
-      raise(Error(loc, "mismatched types"))
+      raise(Error(loc, "mismatched types " ^ (type_to_string a) ^ " and " ^ (type_to_string b)))
 
 (* Helper to generate a type variable. *)
 let ty_idx = ref 0
@@ -214,7 +223,7 @@ let rec check_expr scope expr
     let rhs', ty_rhs = check_expr scope rhs in
     unify loc ty_lhs ty_rhs;
     if (ty_lhs == TyInt || ty_lhs == TyBool) then
-      Typed_ast.EqualsExpr(loc, lhs', rhs'), TyInt
+      Typed_ast.EqualsExpr(loc, lhs', rhs'), TyBool
     else
       raise(Error(loc,"mismatched dual types"))
   | NequalsExpr(loc, lhs, rhs) ->
@@ -222,7 +231,7 @@ let rec check_expr scope expr
     let rhs', ty_rhs = check_expr scope rhs in
     unify loc ty_lhs ty_rhs;
     if (ty_lhs == TyInt || ty_lhs == TyBool) then
-      Typed_ast.NequalsExpr(loc, lhs', rhs'), TyInt
+      Typed_ast.NequalsExpr(loc, lhs', rhs'), TyBool
     else
       raise(Error(loc,"mismatched dual types"))
   | Or2Expr(loc, lhs, rhs) ->
@@ -300,7 +309,7 @@ let rec check_statements ret_ty acc scope stats
     | BindStmt(loc, name, e) :: rest ->
       let e', ty = check_expr scope e in
       let x = (get_id name scope nb) in
-      if (x == nb) then begin
+      if x == nb then begin
         let scope' = BindScope(name, x, ty) :: scope in
         let node = Typed_ast.BindStmt(loc, x, e') in
         iter (nb + 1, node :: acc) scope' rest
@@ -309,18 +318,20 @@ let rec check_statements ret_ty acc scope stats
         iter (nb, node::acc) scope rest
       end
     | IfStmt(loc, e1, e2, Some(e3)) :: rest ->
-      let nb1, body1 = check_statements ret_ty (0, []) scope e1 in
+      let body1, ty = check_expr scope e1 in
+      unify loc ty TyBool;
       let nb2, body2 = check_statements ret_ty (0, []) scope e2 in
       let nb3, body3 = check_statements ret_ty (0, []) scope e3 in
-      let id = nb+nb1+nb2+nb3 in
+      let id = nb+nb2+nb3 in
       let node = Typed_ast.IfStmt(loc,id,body1,body2,Some(body3)) in
-      iter (nb+nb1+nb2+nb3+1, node::acc) scope rest
+      iter (nb+nb2+nb3+1, node::acc) scope rest
     | IfStmt(loc, e1, e2, None) :: rest ->
-      let nb1, body1 = check_statements ret_ty (0, []) scope e1 in
+      let body1, ty = check_expr scope e1 in
+      unify loc ty TyBool;
       let nb2, body2 = check_statements ret_ty (0, []) scope e2 in
-      let id = nb+nb1+nb2 in
+      let id = nb+nb2 in
       let node = Typed_ast.IfStmt(loc,id,body1,body2,None) in
-      iter (nb+nb1+nb2+1, node::acc) scope rest
+      iter (nb+nb2+1, node::acc) scope rest
     | [] ->
       (nb, acc)
   in iter acc scope stats
@@ -364,12 +375,12 @@ let rec find_refs_stat bound stats
           (* The expression can refer to previous instances of 'name'. *)
           (name :: bound, find_refs_expr bound acc e)
         | IfStmt(_, e1, e2, Some(e3)) ->
-          let acc1 = find_refs_stat bound e1 in
+          let acc1 = find_refs_expr bound acc e1 in
           let acc2 = find_refs_stat bound e2 in
           let acc3 = find_refs_stat bound e3 in
           (bound, acc1 @ acc2 @ acc3)
         | IfStmt(_, e1, e2, None) ->
-          let acc1 = find_refs_stat bound e1 in
+          let acc1 = find_refs_expr bound acc e1 in
           let acc2 = find_refs_stat bound e2 in
           (bound, acc1 @ acc2)
       ) (bound, []) stats

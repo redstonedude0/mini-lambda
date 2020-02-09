@@ -31,7 +31,7 @@ type statement
   | ExprStmt of loc * expr
   | BindStmt of loc * id * expr
   | AssignStmt of loc * id * expr
-  | IfStmt of loc * id * (statement list) * (statement list) * ((statement list) option)
+  | IfStmt of loc * id * expr * (statement list) * ((statement list) option)
 
 type func =
   { id: id

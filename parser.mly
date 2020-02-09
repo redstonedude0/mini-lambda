@@ -61,8 +61,9 @@ statement:
   | RETURN expr SEMI { ReturnStmt($startpos, $2) }
   | IDENT BIND expr SEMI { BindStmt($startpos, $1, $3) }
   | expr SEMI { ExprStmt($startpos, $1) }
-  | IF body1=block; THEN body2=block; ELSE body3=block; FI { IfStmt($startpos, body1, body2, Some(body3)) }
-  | IF body1=block; THEN body2=block; FI { IfStmt($startpos, body1, body2, None) }
+/* For now not using optional() menhir construct because it (should) produce the same AST either way */
+  | IF body1=expr THEN body2=block ELSE body3=block FI { IfStmt($startpos, body1, body2, Some(body3)) }
+  | IF body1=expr THEN body2=block FI { IfStmt($startpos, body1, body2, None) }
 
 expr:
   | unary_expr { $1 }

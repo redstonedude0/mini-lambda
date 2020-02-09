@@ -98,15 +98,14 @@ let compile_closure out { id; num_params; num_locals; name; insts; _ } =
       Printf.fprintf out "\tretq\n";
     | Pop ->
       Printf.fprintf out "\tpopq %%rcx\n";
-    | Then i ->
+    | Label i ->
+      Printf.fprintf out "\tlabel_%d:\n" i;
+    | Jump i ->
+      Printf.fprintf out "\tjmp label_%d\n" i;
+    | JumpZ i ->
       Printf.fprintf out "\tpopq %%rcx\n";
       Printf.fprintf out "\ttstq %%rdx, %%rdx\n";
-      Printf.fprintf out "\tjz if_%d_else\n" i;
-    | Else i ->
-      Printf.fprintf out "\tjmp if_%d_fi\n" i;
-      Printf.fprintf out "\tif_%d_else:\n" i;
-    | Fi i ->
-      Printf.fprintf out "\tif_%d_fi:\n" i;
+      Printf.fprintf out "\tjz label_%d\n" i;
     ) insts;
 
   Printf.fprintf out "\t.data\n";
